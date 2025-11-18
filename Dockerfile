@@ -7,4 +7,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD ["gunicorn","-w","3","-b","0.0.0.0:8080","app:app"]
+# Required by Back4App
+EXPOSE 8080
+
+# Start Gunicorn
+CMD ["gunicorn", "-w", "3", "-b", "0.0.0.0:8080", "app:app"]
