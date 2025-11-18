@@ -20,7 +20,17 @@ BATCH_KEYWORD = "batch/zip file"
 def fetch_soup(url, retries=3):
     for attempt in range(1, retries + 1):
         try:
-            resp = session.get(url, timeout=20)
+            resp = session.get(
+                url,
+                timeout=20,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+                    "Accept-Language": "en-US,en;q=0.9",
+                    "Referer": "https://www.google.com/",
+                    "Cache-Control": "no-cache",
+                    "Pragma": "no-cache"
+                }
+            )
             if resp.status_code == 200 and "<html" in resp.text.lower():
                 return BeautifulSoup(resp.text, "html.parser")
         except:
@@ -41,11 +51,11 @@ def find_heading_before(link_tag):
     prev = wrapper.previous_sibling
     while prev:
         if hasattr(prev,"get_text"):
-            text=prev.get_text(" ",strip=True)
-            if text and len(text)>3: return text
+            tx=prev.get_text(" ",strip=True)
+            if tx and len(tx)>3: return tx
         if isinstance(prev,str):
-            text=prev.strip()
-            if len(text)>3: return text
+            tx=prev.strip()
+            if len(tx)>3: return tx
         prev=prev.previous_sibling
     return None
 
@@ -68,17 +78,18 @@ def scrape_secondary_links(url):
 def scrape_main_page(url):
     soup=fetch_soup(url)
     if soup is None:
-        return {"regular":[],"batch":[],"error":"Unable to load"}
+        return {"regular":[],"batch":[],"error":"Unable to load main page (protection/timeout)."}
     regular=[]; batch=[]
     for tag in soup.find_all("a"):
         href=tag.get("href")
         if href and starts_with_prefix(href,EPISODE_PREFIX):
             heading=find_heading_before(tag)
-            ep_text=tag.get_text(" ",strip=True)
-            entry={"heading":heading,"episode_link":href,"episode_text":ep_text,"download_links":[]}
+            episode_text=tag.get_text(" ",strip=True)
+            entry={"heading":heading,"episode_link":href,"episode_text":episode_text,"download_links":[]}
             if is_batch_tag(tag): batch.append(entry)
             else: regular.append(entry)
     all_items=regular+batch
+    from concurrent.futures import ThreadPoolExecutor
     with ThreadPoolExecutor(max_workers=10) as ex:
         futures={ex.submit(scrape_secondary_links,i["episode_link"]):i for i in all_items}
         for f,i in futures.items():
@@ -86,7 +97,7 @@ def scrape_main_page(url):
             except: i["download_links"]=[]
     return {"regular":regular,"batch":batch}
 
-@app.route("/scrape")
+@app.route("/scrape", methods=["GET"])
 def scrape_api():
     url=request.args.get("url")
     if not url: return jsonify({"error":"Missing ?url="}),400
@@ -94,7 +105,7 @@ def scrape_api():
 
 @app.route("/ping")
 def ping():
-    return "pong",200
+    return "pong", 200
 
 if __name__=="__main__":
     app.run(host="0.0.0.0",port=8080)
