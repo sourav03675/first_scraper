@@ -14,7 +14,7 @@ EPISODE_PREFIX = (
     "https://links.modpro.blog/"
 )
 
-DOWNLOAD_PREFIX = "https://tech.unblockedgames.world/"
+DOWNLOAD_PREFIX = "https://en.thenaukriadda.in/"
 BATCH_KEYWORD = "batch/zip file"
 
 def fetch_soup(url, retries=3):
